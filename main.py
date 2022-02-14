@@ -31,25 +31,86 @@ def loadData(path,filename):
             XMLtree = ET.parse(f)
             XMLroot = XMLtree.getroot()
             imgName = XMLroot[1].text
-            imgClassID = XMLroot[4][0].text
             if os.path.isfile(os.path.join(os.path.join(path, 'images'),imgName)):
-               data.append(ImageAnalizer(path, imgName, imgClassID))
+               data.append(ImageAnalizer(path,f))
     return data
 
 
 class ImageAnalizer:
-    def __init__(self, path, filename, classID):
-        self.classID = classID
-        self.name = filename
-        self.img = cv2.imread(os.path.join(os.path.join(path, 'images'),filename))
+    def __init__(self, path, f):
+        self.path = path
+        self.XMLf = f
+
+    def readXML(self):
+        self.XMLtree = ET.parse(self.XMLf)
+        XMLroot = self.XMLtree.getroot()
+        self.classID = XMLroot[4][0].text
+        self.name = XMLroot[1].text
+        self.width = int(XMLroot[2][0].text)
+        self.height = int(XMLroot[2][1].text)
+        self.img = cv2.imread(os.path.join(os.path.join(self.path, 'images'),self.name), cv.IMREAD_COLOR)
+
+    def findCircles(self):
+        self.readXML()
+        cv.imshow("detected circles", self.img)
+        cv.waitKey(0)
+        for iterX in range(self.width):
+            for iterY in range(self.height):
+                (b, g, r) = self.img[iterY, iterX]
+                rFunction = max(0, min(r - g, r - b) / (r + g + b))
+                if r >= g and r >= b and g/(r - g) <= 6:
+                    r = rFunction * 255
+                else :
+                    r = 0
+                self.img[iterY, iterX] = (r, r, r)
+        cv.imshow("detected circles", self.img)
+        cv.waitKey(0)
+
+        segmentsDensity = 1
+        for iter in range(1):
+            dx = int(self.width / segmentsDensity)
+            dy = int(self.height / segmentsDensity)
+            for iterY in range(segmentsDensity):
+                for iterX in range(segmentsDensity):
+                    segment = self.img[iterY*dy:iterY*dy+dy, iterX*dx:iterX*dx+dx]
+                    rows = segment.shape[0]
+                    graySegment = cv.cvtColor(segment, cv.COLOR_BGR2GRAY)
+                    '''
+                    circles = cv.HoughCircles(graySegment, cv.HOUGH_GRADIENT, 1, rows/2, param1 = 100.0, param2 = 10.0,minRadius = int(dx/10), maxRadius = dx)
+                    if circles is not None:
+                        circles = np.uint16(np.around(circles))
+                        for i in circles[0, :]:
+                            center = (i[0], i[1])
+                            # circle center
+                            cv.circle(segment, center, 1, (0, 100, 100), 3)
+                            # circle outline
+                            radius = i[2]
+                            cv.circle(segment, center, radius, (255, 0, 255), 3)
+                    circles = None
+                    '''
+                    vis = self.img.copy()
+                    mser = cv2.MSER_create()
+                    regions, box = mser.detectRegions(graySegment)
+                    hulls = [cv2.convexHull(p.reshape(-1, 1, 2)) for p in regions]
+                    cv2.polylines(vis, hulls, 1, (0, 255, 0))
+
+                    mask = np.zeros((self.img.shape[0], self.img.shape[1], 1), dtype=np.uint8)
+
+                    for contour in hulls:
+                        cv2.drawContours(mask, [contour], -1, (255, 255, 255), -1)
+                    text_only = cv2.bitwise_and(self.img, self.img, mask=mask)
+
+                    cv2.imshow("text only", text_only)
+                    #cv.imshow("detected circles", graySegment)
+                    cv.waitKey(0)
+            segmentsDensity = segmentsDensity + 1
+
+
 
 def main(argv):
     dataTrain = loadData('./train/', 'annotations')
     dataTest = loadData('./test/', 'annotations')
-    iter = 0
-    for i in dataTrain:
-        iter = iter + 1
-    print(iter)
+    dataTest[1].findCircles()
     '''
     default_file = 'img.png'
     filename = argv[0] if len(argv) > 0 else default_file
@@ -63,7 +124,7 @@ def main(argv):
 
     gray = cv.cvtColor(src, cv.COLOR_BGR2GRAY)
 
-    #gray = cv.medianBlur(gray, 5)
+    gray = cv.medianBlur(gray, 5)
 
     rows = gray.shape[0]
     circles = cv.HoughCircles(gray, cv.HOUGH_GRADIENT, 1, rows / 8,
