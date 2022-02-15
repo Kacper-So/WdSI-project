@@ -8,20 +8,8 @@ from sklearn.metrics import confusion_matrix
 import pandas
 import os
 import xml.etree.ElementTree as ET
-
-#def load_data(path, failname):
-#    data = []
-#    return data
-
-#def main():
-#    return
-
-#if __name__ == '__main__':
-#    main()
-
 import sys
 import cv2 as cv
-import numpy as np
 
 def loadData(path,filename):
     data = []
@@ -44,106 +32,157 @@ class ImageAnalizer:
     def readXML(self):
         self.XMLtree = ET.parse(self.XMLf)
         XMLroot = self.XMLtree.getroot()
-        self.classID = XMLroot[4][0].text
         self.name = XMLroot[1].text
         self.width = int(XMLroot[2][0].text)
         self.height = int(XMLroot[2][1].text)
+        iter = 4
+        self.xmin = []
+        self.ymin = []
+        self.xmax = []
+        self.ymax = []
+        self.classID = []
+        while iter is not len(XMLroot):
+            self.xmin.append(int(XMLroot[iter][5][0].text))
+            self.ymin.append(int(XMLroot[iter][5][1].text))
+            self.xmax.append(int(XMLroot[iter][5][2].text))
+            self.ymax.append(int(XMLroot[iter][5][3].text))
+            self.classID.append(XMLroot[iter][0].text)
+            iter = iter + 1
         self.img = cv2.imread(os.path.join(os.path.join(self.path, 'images'),self.name), cv.IMREAD_COLOR)
+        return
 
     def findCircles(self):
         self.readXML()
         cv.imshow("detected circles", self.img)
         cv.waitKey(0)
-        for iterX in range(self.width):
-            for iterY in range(self.height):
-                (b, g, r) = self.img[iterY, iterX]
-                rFunction = max(0, min(r - g, r - b) / (r + g + b))
-                if r >= g and r >= b and g/(r - g) <= 6:
-                    r = rFunction * 255
-                else :
-                    r = 0
-                self.img[iterY, iterX] = (r, r, r)
-        cv.imshow("detected circles", self.img)
-        cv.waitKey(0)
+        tempImg = self.img.copy()
+        test = self.img.copy()
+        imageSegments = [[] for i in range(3)]
+        for iterator in range(3):
+            filtrationRanges = [[(0, 20, 20), (75, 255, 255),(105, 20, 20),(180, 255, 255)],
+                                [(0, 10, 20), (85, 255, 255),(95, 10, 20),(180, 255, 255)],
+                                [(0, 0, 0), (90, 255, 255),(90, 0,0),(180, 255, 255)]]
+            hsv = cv2.cvtColor(tempImg, cv2.COLOR_BGR2HSV)
+            mask1 = cv2.inRange(hsv, filtrationRanges[iterator][0], filtrationRanges[iterator][1])
+            mask2 = cv2.inRange(hsv, filtrationRanges[iterator][2], filtrationRanges[iterator][3])
+            mask = cv2.bitwise_or(mask1, mask2)
+            croped = cv2.bitwise_and(tempImg, tempImg, mask=mask)
 
-        segmentsDensity = 1
-        for iter in range(1):
-            dx = int(self.width / segmentsDensity)
-            dy = int(self.height / segmentsDensity)
-            for iterY in range(segmentsDensity):
-                for iterX in range(segmentsDensity):
-                    segment = self.img[iterY*dy:iterY*dy+dy, iterX*dx:iterX*dx+dx]
-                    rows = segment.shape[0]
-                    graySegment = cv.cvtColor(segment, cv.COLOR_BGR2GRAY)
-                    '''
-                    circles = cv.HoughCircles(graySegment, cv.HOUGH_GRADIENT, 1, rows/2, param1 = 100.0, param2 = 10.0,minRadius = int(dx/10), maxRadius = dx)
-                    if circles is not None:
-                        circles = np.uint16(np.around(circles))
-                        for i in circles[0, :]:
-                            center = (i[0], i[1])
-                            # circle center
-                            cv.circle(segment, center, 1, (0, 100, 100), 3)
-                            # circle outline
-                            radius = i[2]
-                            cv.circle(segment, center, radius, (255, 0, 255), 3)
-                    circles = None
-                    '''
-                    vis = self.img.copy()
-                    mser = cv2.MSER_create()
-                    regions, box = mser.detectRegions(graySegment)
-                    hulls = [cv2.convexHull(p.reshape(-1, 1, 2)) for p in regions]
-                    cv2.polylines(vis, hulls, 1, (0, 255, 0))
+            segmentsDensity = 1
+            for iter in range(2):
+                dx = int(self.width / segmentsDensity)
+                dy = int(self.height / segmentsDensity)
+                for iterY in range(segmentsDensity):
+                    for iterX in range(segmentsDensity):
+                        segment = croped.copy()
+                        segment = segment[iterY*dy:iterY*dy+dy, iterX*dx:iterX*dx+dx]
+                        graySegment = cv.cvtColor(segment, cv.COLOR_BGR2GRAY)
+                        graySegment = cv.medianBlur(graySegment, 3)
+                        cv2.imshow('img', graySegment)
+                        cv2.waitKey(0)
+                        mser = cv2.MSER_create()
+                        regions, bboxes = mser.detectRegions(graySegment)
+                        for box in bboxes:
+                            x, y, w, h = box
+                            x = x + iterX * dx
+                            y = y + iterY * dy
+                            tolerance = int(0.05 * ((w + h) / 2))
+                            if abs(w - h) < tolerance:
+                                cv2.rectangle(test, (x, y), (x + w, y + h), (0, 255, 0), 1)
+                                temp = self.img[y : y + h, x : x + w].copy()
+                                imageSegments[iterator].append(temp)
+                        cv2.imshow('img2', test)
+                        cv2.waitKey(0)
+                        test = self.img.copy()
+                segmentsDensity = segmentsDensity + 1
+        return imageSegments
 
-                    mask = np.zeros((self.img.shape[0], self.img.shape[1], 1), dtype=np.uint8)
+def dataMerge(dataX):
+    data = []
+    for image in dataX:
+        image.readXML()
+        for iter in range(len(image.classID)):
+            if image.classID[iter] == 'speedlimit':
+                temp = 1
+            else:
+                temp = 0
+            data.append({'image': image.img[image.ymin[iter]: image.ymax[iter], image.xmin[iter]: image.xmax[iter]],'label': temp})
+    return data
 
-                    for contour in hulls:
-                        cv2.drawContours(mask, [contour], -1, (255, 255, 255), -1)
-                    text_only = cv2.bitwise_and(self.img, self.img, mask=mask)
+def learn(data):
+    dict_size = 128
+    bow = cv2.BOWKMeansTrainer(dict_size)
+    sift = cv2.SIFT_create()
+    for sample in data:
+        kpts = sift.detect(sample['image'], None)
+        kpts, desc = sift.compute(sample['image'], kpts)
+        if desc is not None:
+            bow.add(desc)
+    vocabulary = bow.cluster()
+    np.save('voc.npy', vocabulary)
+    return
 
-                    cv2.imshow("text only", text_only)
-                    #cv.imshow("detected circles", graySegment)
-                    cv.waitKey(0)
-            segmentsDensity = segmentsDensity + 1
+def extractFeatures(data):
+    sift = cv2.SIFT_create()
+    flann = cv2.FlannBasedMatcher_create()
+    bow = cv2.BOWImgDescriptorExtractor(sift, flann)
+    vocabulary = np.load('voc.npy')
+    bow.setVocabulary(vocabulary)
+    for sample in data:
+        kpts = sift.detect(sample['image'], None)
+        imgDes = bow.compute(sample['image'], kpts)
+        if imgDes is not None:
+            sample.update({'desc': imgDes})
+        else:
+            sample.update({'desc': np.zeros((1, 128))})
+    return data
 
+def train(data):
+    clf = RandomForestClassifier(128)
+    x_matrix = np.empty((1, 128))
+    y_vector = []
+    for sample in data:
+        y_vector.append(sample['label'])
+        x_matrix = np.vstack((x_matrix, sample['desc']))
+    clf.fit(x_matrix[1:], y_vector)
+    return clf
+
+def predict(rf, data):
+    for sample in data:
+        sample.update({'label_pred': rf.predict(sample['desc'])[0]})
+    return data
+
+def evaluate(data):
+    y_pred = []
+    y_real = []
+    for sample in data:
+        y_pred.append(sample['label_pred'])
+        y_real.append(sample['label'])
+
+    confusion = confusion_matrix(y_real, y_pred)
+    TP, FP, FN, TN = confusion.ravel()
+    print(confusion)
+    accuracy = 100 * ((TP + TN)/(TP + TN + FN + FP))
+    print("accuracy =", round(accuracy, 2), "%")
+    return
 
 
 def main(argv):
     dataTrain = loadData('./train/', 'annotations')
     dataTest = loadData('./test/', 'annotations')
-    dataTest[1].findCircles()
-    '''
-    default_file = 'img.png'
-    filename = argv[0] if len(argv) > 0 else default_file
-    # Loads an image
-    src = cv.imread(cv.samples.findFile(filename), cv.IMREAD_COLOR)
-    # Check if image is loaded fine
-    if src is None:
-        print('Error opening image!')
-        print('Usage: hough_circle.py [image_name -- default ' + default_file + '] \n')
-        return -1
-
-    gray = cv.cvtColor(src, cv.COLOR_BGR2GRAY)
-
-    gray = cv.medianBlur(gray, 5)
-
-    rows = gray.shape[0]
-    circles = cv.HoughCircles(gray, cv.HOUGH_GRADIENT, 1, rows / 8,
-                              param1=10, param2=10,
-                              minRadius=1, maxRadius=30)
-
-    if circles is not None:
-        circles = np.uint16(np.around(circles))
-        for i in circles[0, :]:
-            center = (i[0], i[1])
-            # circle center
-            cv.circle(src, center, 1, (0, 100, 100), 3)
-            # circle outline
-            radius = i[2]
-            cv.circle(src, center, radius, (255, 0, 255), 3)
-
-    cv.imshow("detected circles", src)
-    cv.waitKey(0)
-    '''
+    dataTrain = dataMerge(dataTrain)
+    dataTest = dataMerge(dataTest)
+    print('lerning')
+    learn(dataTrain)
+    print('extracting train features')
+    dataTrain = extractFeatures(dataTrain)
+    print('training')
+    rf = train(dataTrain)
+    print('extracting test features')
+    dataTest = extractFeatures(dataTest)
+    print('testing')
+    dataTest = predict(rf, dataTest)
+    evaluate(dataTest)
     return 0
 
 
