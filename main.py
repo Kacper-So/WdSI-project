@@ -10,106 +10,123 @@ import os
 import xml.etree.ElementTree as ET
 import sys
 import cv2 as cv
+import itertools
 
-def loadData(path,filename):
+#funkcja zwraca listę nazw obrazów znajdujących się w podanym pliku
+def loadImages(path,filename):
     data = []
     for file in os.listdir(os.path.join(path, filename)):
         f = os.path.join(os.path.join(path, filename),file)
-        if f.endswith(".xml"):
-            XMLtree = ET.parse(f)
-            XMLroot = XMLtree.getroot()
-            imgName = XMLroot[1].text
-            if os.path.isfile(os.path.join(os.path.join(path, 'images'),imgName)):
-               data.append(ImageAnalizer(path,f))
+        if f.endswith(".png"):
+            name = os.path.basename(f)
+            data.append(name)
     return data
 
+#funkcja na podstawie listy nazw obrazów odczytuje pliki xml (jeżeli istnieją) i tworzy obiekt typu ImageAnalizer. Funkcja zwraca listę obiektów typu ImageAnalizer
+def loadData(path, imgNames):
+    data = []
+    for img in imgNames:
+        name = os.path.splitext(img)[0]
+        if os.path.isfile(os.path.join(os.path.join(path, 'annotations'), name + '.xml')):
+            f = os.path.join(os.path.join(path, 'annotations'), os.path.splitext(img)[0]+'.xml')
+            XMLtree = ET.parse(f)
+            XMLroot = XMLtree.getroot()
+            data.append(ImageAnalizer(path,f, name))
+        else:
+            data.append(ImageAnalizer(path, None, name))
+    return data
 
+#klasa zawierająca wszystkie informacje o obrazie jak i sam obraz oraz metodę pozwalającą na wykrycie obszarów w których potencjalnie może znajdować się znak
 class ImageAnalizer:
-    def __init__(self, path, f):
+    def __init__(self, path, f, name):
+        self.name = name
         self.path = path
         self.XMLf = f
+        self.img = cv2.imread(os.path.join(os.path.join(self.path, 'images'),self.name+'.png'), cv.IMREAD_COLOR)
         self.readXML()
 
     def readXML(self):
-        self.XMLtree = ET.parse(self.XMLf)
-        XMLroot = self.XMLtree.getroot()
-        self.name = XMLroot[1].text
-        self.width = int(XMLroot[2][0].text)
-        self.height = int(XMLroot[2][1].text)
-        iter = 4
-        self.xmin = []
-        self.ymin = []
-        self.xmax = []
-        self.ymax = []
-        self.classID = []
-        while iter is not len(XMLroot):
-            self.xmin.append(int(XMLroot[iter][5][0].text))
-            self.ymin.append(int(XMLroot[iter][5][1].text))
-            self.xmax.append(int(XMLroot[iter][5][2].text))
-            self.ymax.append(int(XMLroot[iter][5][3].text))
-            self.classID.append(XMLroot[iter][0].text)
-            iter = iter + 1
-        self.img = cv2.imread(os.path.join(os.path.join(self.path, 'images'),self.name), cv.IMREAD_COLOR)
+        if self.XMLf != None:
+            self.XMLtree = ET.parse(self.XMLf)
+            XMLroot = self.XMLtree.getroot()
+            self.name = XMLroot[1].text
+            self.width = int(XMLroot[2][0].text)
+            self.height = int(XMLroot[2][1].text)
+            iter = 4
+            self.xmin = []
+            self.ymin = []
+            self.xmax = []
+            self.ymax = []
+            self.classID = []
+            while iter is not len(XMLroot):
+                self.xmin.append(int(XMLroot[iter][5][0].text))
+                self.ymin.append(int(XMLroot[iter][5][1].text))
+                self.xmax.append(int(XMLroot[iter][5][2].text))
+                self.ymax.append(int(XMLroot[iter][5][3].text))
+                self.classID.append(XMLroot[iter][0].text)
+                iter = iter + 1
         return
 
     def findCircles(self):
         self.readXML()
-        cv.imshow("detected circles", self.img)
-        cv.waitKey(0)
+        #cv.imshow("detected circles", self.img)
+        #cv.waitKey(0)
         tempImg = self.img.copy()
         test = self.img.copy()
-        imageSegments = [[] for i in range(3)]
-        for iterator in range(3):
-            filtrationRanges = [[(0, 20, 20), (75, 255, 255),(105, 20, 20),(180, 255, 255)],
-                                [(0, 10, 20), (85, 255, 255),(95, 10, 20),(180, 255, 255)],
-                                [(0, 0, 0), (90, 255, 255),(90, 0,0),(180, 255, 255)]]
-            hsv = cv2.cvtColor(tempImg, cv2.COLOR_BGR2HSV)
-            mask1 = cv2.inRange(hsv, filtrationRanges[iterator][0], filtrationRanges[iterator][1])
-            mask2 = cv2.inRange(hsv, filtrationRanges[iterator][2], filtrationRanges[iterator][3])
-            mask = cv2.bitwise_or(mask1, mask2)
-            croped = cv2.bitwise_and(tempImg, tempImg, mask=mask)
+        #imageSegments = [[] for i in range(3)]
+        imageSegments = []
+        filtrationRange = [(0, 10, 20), (40, 255, 255),(140, 10, 20),(180, 255, 255)]
+        hsv = cv2.cvtColor(tempImg, cv2.COLOR_BGR2HSV)
+        mask1 = cv2.inRange(hsv, filtrationRange[0], filtrationRange[1])
+        mask2 = cv2.inRange(hsv, filtrationRange[2], filtrationRange[3])
+        mask = cv2.bitwise_or(mask1, mask2)
+        croped = cv2.bitwise_and(tempImg, tempImg, mask=mask)
 
-            segmentsDensity = 1
-            for iter in range(2):
-                dx = int(self.width / segmentsDensity)
-                dy = int(self.height / segmentsDensity)
-                for iterY in range(segmentsDensity):
-                    for iterX in range(segmentsDensity):
-                        segment = croped.copy()
-                        segment = segment[iterY*dy:iterY*dy+dy, iterX*dx:iterX*dx+dx]
-                        graySegment = cv.cvtColor(segment, cv.COLOR_BGR2GRAY)
-                        graySegment = cv.medianBlur(graySegment, 3)
-                        cv2.imshow('img', graySegment)
-                        cv2.waitKey(0)
-                        mser = cv2.MSER_create()
-                        regions, bboxes = mser.detectRegions(graySegment)
-                        for box in bboxes:
-                            x, y, w, h = box
-                            x = x + iterX * dx
-                            y = y + iterY * dy
-                            tolerance = int(0.05 * ((w + h) / 2))
-                            if abs(w - h) < tolerance:
-                                cv2.rectangle(test, (x, y), (x + w, y + h), (0, 255, 0), 1)
-                                temp = self.img[y : y + h, x : x + w].copy()
-                                imageSegments[iterator].append(temp)
-                        cv2.imshow('img2', test)
-                        cv2.waitKey(0)
-                        test = self.img.copy()
-                segmentsDensity = segmentsDensity + 1
+        segmentsDensity = 1
+        for iter in range(1):
+            dx = int(self.width / segmentsDensity)
+            dy = int(self.height / segmentsDensity)
+            for iterY in range(segmentsDensity):
+                for iterX in range(segmentsDensity):
+                    segment = croped.copy()
+                    segment = segment[iterY*dy:iterY*dy+dy, iterX*dx:iterX*dx+dx]
+                    graySegment = cv.cvtColor(segment, cv.COLOR_BGR2GRAY)
+                    graySegment = cv.medianBlur(graySegment, 3)
+                    #cv2.imshow('img', graySegment)
+                    #cv2.waitKey(0)
+                    mser = cv2.MSER_create()
+                    regions, bboxes = mser.detectRegions(graySegment)
+                    for box in bboxes:
+                        x, y, w, h = box
+                        x = x + iterX * dx
+                        y = y + iterY * dy
+                        tolerance = int(0.05 * ((w + h) / 2))
+                        if abs(w - h) < tolerance:
+                            cv2.rectangle(test, (x, y), (x + w, y + h), (0, 255, 0), 1)
+                            temp = self.img[y : y + h, x : x + w].copy()
+                            imageSegments.append({'image': temp, 'name': self.name, 'ymin': y, 'ymax': y+h, 'xmin': x, 'xmax': x+w})
+                    test = self.img.copy()
+            segmentsDensity = segmentsDensity + 1
+        for dict in imageSegments:
+            dict.update({'n': len(imageSegments)})
         return imageSegments
 
+#funkcja zwracająca słownik składający się z obrazów oraz ich classID odczytanych z pliku XML
 def dataMerge(dataX):
     data = []
     for image in dataX:
-        image.readXML()
-        for iter in range(len(image.classID)):
-            if image.classID[iter] == 'speedlimit':
-                temp = 1
-            else:
-                temp = 0
-            data.append({'image': image.img[image.ymin[iter]: image.ymax[iter], image.xmin[iter]: image.xmax[iter]],'label': temp})
+        if image.XMLf != None:
+            for iter in range(len(image.classID)):
+                if image.classID[iter] == 'speedlimit':
+                    temp = 1
+                else:
+                    temp = 0
+                data.append({'image': image.img[image.ymin[iter]: image.ymax[iter], image.xmin[iter]: image.xmax[iter]],'label': temp})
+        else:
+            data.append({'image': image.img[image.ymin[iter]: image.ymax[iter], image.xmin[iter]: image.xmax[iter]]})
     return data
 
+#funkcja tworząca słownik potrzebny do uczenia maszynowego przy pomocy sift
 def learn(data):
     dict_size = 128
     bow = cv2.BOWKMeansTrainer(dict_size)
@@ -123,6 +140,7 @@ def learn(data):
     np.save('voc.npy', vocabulary)
     return
 
+#funkcja przetwarzająca dane, wyciągająca punkty kluczowe z obrazu przy pomocy sift
 def extractFeatures(data):
     sift = cv2.SIFT_create()
     flann = cv2.FlannBasedMatcher_create()
@@ -138,6 +156,7 @@ def extractFeatures(data):
             sample.update({'desc': np.zeros((1, 128))})
     return data
 
+#funkcja tworząca randomForest
 def train(data):
     clf = RandomForestClassifier(128)
     x_matrix = np.empty((1, 128))
@@ -148,6 +167,7 @@ def train(data):
     clf.fit(x_matrix[1:], y_vector)
     return clf
 
+#funkcja klasyfikująca obrazy przy pomocy uczenia maszynowego
 def predict(rf, data):
     for sample in data:
         sample.update({'label_pred': rf.predict(sample['desc'])[0]})
@@ -167,6 +187,7 @@ def evaluate(data):
     print("accuracy =", round(accuracy, 2), "%")
     return
 
+#funkcja spełniająca funkcjonalność classify
 def classify(dataTest):
     data = []
     n_files = int(input(''))
@@ -181,46 +202,68 @@ def classify(dataTest):
             bboxes.append(input(''))
             bboxes[j] = [int(x) for x in bboxes[j].split()]
         #print(bboxes)
-        for img in dataTest:
-            if img.name == file:
+        for image in dataTest:
+            if image.name + '.png' == file:
                 for j in range(n):
-                    data.append({'image': img.img[bboxes[j][2]:bboxes[j][3], bboxes[j][0]:bboxes[j][1]]})
+                    data.append({'image': image.img[bboxes[j][2]:bboxes[j][3], bboxes[j][0]:bboxes[j][1]]})
     return data
 
+#funkcja wyświetlająca wyniki klasyfikacji
 def displayResultsClassify(data):
     for img in data:
-        #print(img['label_pred'])
         if img['label_pred'] == 1:
             print('speedlimit')
         else:
             print('other')
+    return
+
+def detect(dataTest, rf):
+    data = []
+    for imgAn in dataTest:
+        data.append(imgAn.findCircles())
+    data = [j for temp2 in data for j in temp2]
+    data = predict(rf, extractFeatures(data))
+    iter = 0
+    for dict in data:
+        if dict['label_pred'] != 1:
+            del data[iter]
+        iter = iter + 1
+    print(len(data))
+    iter = 0
+    name = ''
+    for dict in data:
+        if dict['name'] != name:
+            iter = iter + 1
+            name = dict['name']
+    images = [[] for i in range(iter)]
+    if data != []:
+        iter = 0
+        name = data[0]['name']
+        for dict in data:
+            images[iter].append(dict)
+            if dict['name'] != name:
+                iter = iter + 1
+                name = dict['name']
+    print(len(images))
+    return
 
 def main(argv):
     command = input('')
-    #Training
-    dataTrain = loadData('./train/', 'annotations')
-    dataTest = loadData('./test/', 'annotations')
-    dataTrain = dataMerge(dataTrain)
-    #dataTest = dataMerge(dataTest)
-    #print('lerning')
-    learn(dataTrain)
-    #print('extracting train features')
-    dataTrain = extractFeatures(dataTrain)
-    #print('training')
-    rf = train(dataTrain)
-    #print('extracting test features')
-    #dataTest = extractFeatures(dataTest)
-    #print('testing')
-    #dataTest = predict(rf, dataTest)
-    #evaluate(dataTest)
+    trainImages = loadImages('./train/', 'images') #trainImages = lista z nazwami obrazów w pliku train
+    testImages = loadImages('./test/', 'images') #testImages = lista z nazwami obrazów w pliku test
+    dataTrain = loadData('./train/', trainImages) #dataTrain = lista obiektów typu ImageAnalizer wygenerowana na podstawie nazw obrazów
+    dataTest = loadData('./test/', testImages) #dataTest = lista obiektów typu ImageAnalizer wygenerowana na podstawie nazw obrazów
+    dataTrain = dataMerge(dataTrain) #dataTrain = słownik składający się z obrazów oraz ich classID, generowany dla dataTrain z uwagi na pewność wstąienia pliku XML
+                                     #oraz tego iż taki słownik będzie potrzebny tylko podczas uczenia
+    learn(dataTrain) #generowanie słownika dla uczenia maszynowego
+    dataTrain = extractFeatures(dataTrain) #dataTrain = słownik składający się z kluczowych punktów obrazów
+    rf = train(dataTrain) #rf = randomForest stworzony na podstawie słownika składającego się z kluczowych punktów
     if command == 'classify':
         displayResultsClassify(predict(rf, extractFeatures(classify(dataTest))))
     if command == 'detect':
-
-
+        detect(dataTest, rf)
 
     return 0
-
 
 if __name__ == "__main__":
     main(sys.argv[1:])
