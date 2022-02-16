@@ -28,6 +28,7 @@ class ImageAnalizer:
     def __init__(self, path, f):
         self.path = path
         self.XMLf = f
+        self.readXML()
 
     def readXML(self):
         self.XMLtree = ET.parse(self.XMLf)
@@ -166,23 +167,58 @@ def evaluate(data):
     print("accuracy =", round(accuracy, 2), "%")
     return
 
+def classify(dataTest):
+    data = []
+    n_files = int(input(''))
+    #print(n_files)
+    for i in range(n_files):
+        file = input('')
+        #print(file)
+        n = int(input(''))
+        #print(n)
+        bboxes = []
+        for j in range(n):
+            bboxes.append(input(''))
+            bboxes[j] = [int(x) for x in bboxes[j].split()]
+        #print(bboxes)
+        for img in dataTest:
+            if img.name == file:
+                for j in range(n):
+                    data.append({'image': img.img[bboxes[j][2]:bboxes[j][3], bboxes[j][0]:bboxes[j][1]]})
+    return data
+
+def displayResultsClassify(data):
+    for img in data:
+        #print(img['label_pred'])
+        if img['label_pred'] == 1:
+            print('speedlimit')
+        else:
+            print('other')
 
 def main(argv):
+    command = input('')
+    #Training
     dataTrain = loadData('./train/', 'annotations')
     dataTest = loadData('./test/', 'annotations')
     dataTrain = dataMerge(dataTrain)
-    dataTest = dataMerge(dataTest)
-    print('lerning')
+    #dataTest = dataMerge(dataTest)
+    #print('lerning')
     learn(dataTrain)
-    print('extracting train features')
+    #print('extracting train features')
     dataTrain = extractFeatures(dataTrain)
-    print('training')
+    #print('training')
     rf = train(dataTrain)
-    print('extracting test features')
-    dataTest = extractFeatures(dataTest)
-    print('testing')
-    dataTest = predict(rf, dataTest)
-    evaluate(dataTest)
+    #print('extracting test features')
+    #dataTest = extractFeatures(dataTest)
+    #print('testing')
+    #dataTest = predict(rf, dataTest)
+    #evaluate(dataTest)
+    if command == 'classify':
+        displayResultsClassify(predict(rf, extractFeatures(classify(dataTest))))
+    if command == 'detect':
+
+
+
     return 0
 
 
