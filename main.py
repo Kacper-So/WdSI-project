@@ -228,7 +228,6 @@ def detect(dataTest, rf):
         if dict['label_pred'] != 1:
             del data[iter]
         iter = iter + 1
-    print(len(data))
     iter = 0
     name = ''
     for dict in data:
@@ -244,7 +243,19 @@ def detect(dataTest, rf):
             if dict['name'] != name:
                 iter = iter + 1
                 name = dict['name']
-    print(len(images))
+    n = 0
+    for img in images:
+        if img != []:
+            for dict in img:
+                n = n + 1
+            img[0]['n'] = n
+            n = 0
+    for img in images:
+        if img != []:
+            print(img[0]['name'])
+            print(img[0]['n'])
+            for segment in img:
+                print(segment['xmin'], segment['xmax'], segment['ymin'], segment['ymax'], sep = ' ')
     return
 
 def main(argv):
