@@ -13,10 +13,10 @@ import cv2 as cv
 import itertools
 
 #funkcja zwraca listę nazw obrazów znajdujących się w podanym pliku
-def loadImages(path,filename):
+def loadImages(path,filename, filename2):
     data = []
-    for file in os.listdir(os.path.join(path, filename)):
-        f = os.path.join(os.path.join(path, filename),file)
+    for file in os.listdir(os.path.join(os.path.join(path, filename),filename2)):
+        f = os.path.join(os.path.join(os.path.join(path, filename),filename2),file)
         if f.endswith(".png"):
             name = os.path.basename(f)
             data.append(name)
@@ -203,7 +203,7 @@ def classify(dataTest):
             bboxes[j] = [int(x) for x in bboxes[j].split()]
         #print(bboxes)
         for image in dataTest:
-            if image.name + '.png' == file:
+            if image.name == file:
                 for j in range(n):
                     data.append({'image': image.img[bboxes[j][2]:bboxes[j][3], bboxes[j][0]:bboxes[j][1]]})
     return data
@@ -260,10 +260,10 @@ def detect(dataTest, rf):
 
 def main(argv):
     command = input('')
-    trainImages = loadImages('./train/', 'images') #trainImages = lista z nazwami obrazów w pliku train
-    testImages = loadImages('./test/', 'images') #testImages = lista z nazwami obrazów w pliku test
-    dataTrain = loadData('./train/', trainImages) #dataTrain = lista obiektów typu ImageAnalizer wygenerowana na podstawie nazw obrazów
-    dataTest = loadData('./test/', testImages) #dataTest = lista obiektów typu ImageAnalizer wygenerowana na podstawie nazw obrazów
+    trainImages = loadImages(os.path.join(os.path.split(os.path.dirname(__file__))[0]), 'train', 'images') #trainImages = lista z nazwami obrazów w pliku train
+    testImages = loadImages(os.path.join(os.path.split(os.path.dirname(__file__))[0]), 'test', 'images') #testImages = lista z nazwami obrazów w pliku test
+    dataTrain = loadData(os.path.join(os.path.split(os.path.dirname(__file__))[0], 'train'), trainImages) #dataTrain = lista obiektów typu ImageAnalizer wygenerowana na podstawie nazw obrazów
+    dataTest = loadData(os.path.join(os.path.split(os.path.dirname(__file__))[0], 'test'), testImages) #dataTest = lista obiektów typu ImageAnalizer wygenerowana na podstawie nazw obrazów
     dataTrain = dataMerge(dataTrain) #dataTrain = słownik składający się z obrazów oraz ich classID, generowany dla dataTrain z uwagi na pewność wstąienia pliku XML
                                      #oraz tego iż taki słownik będzie potrzebny tylko podczas uczenia
     learn(dataTrain) #generowanie słownika dla uczenia maszynowego
