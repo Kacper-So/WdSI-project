@@ -163,12 +163,6 @@ def dataMerge(dataX):
                     temp = 0
                 # TODO Przydalyby sie tez przyklady np. tla czy innych obiektow w klasie "other".
                 data.append({'image': image.img[image.ymin[iter]: image.ymax[iter], image.xmin[iter]: image.xmax[iter]],'label': temp})
-<<<<<<< HEAD
-=======
-        else:
-            # TODO W tym przypadku zmienna "iter" bedzie niezainicjowana.
-            data.append({'image': image.img[image.ymin[iter]: image.ymax[iter], image.xmin[iter]: image.xmax[iter]]})
->>>>>>> 65eab48ab3b372cb29f3c8d44b109bea92352317
     return data
 
 #funkcja tworząca słownik potrzebny do uczenia maszynowego przy pomocy sift
@@ -270,16 +264,9 @@ def detect(dataTest, rf):
     data = predict(rf, extractFeatures(data))
     data2 = []
     for dict in data:
-<<<<<<< HEAD
         if dict['label_pred'] == 1:
             # TODO To moze nie dzialac prawidlowo, poniewaz rozmiar data bedzie sie zmienial.
             data2.append(dict)
-=======
-        if dict['label_pred'] != 1:
-            # TODO To moze nie dzialac prawidlowo, poniewaz rozmiar data bedzie sie zmienial.
-            del data[iter]
-        iter = iter + 1
->>>>>>> 65eab48ab3b372cb29f3c8d44b109bea92352317
     iter = 0
     name = ''
     for dict in data2:
