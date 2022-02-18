@@ -52,10 +52,10 @@ import itertools
 
 
 #funkcja zwraca listę nazw obrazów znajdujących się w podanym pliku
-def loadImages(path,filename, filename2):
+def loadImages(path):
     data = []
-    for file in os.listdir(os.path.join(path, filename,filename2)):
-        f = os.path.join(path, filename,filename2,file)
+    for file in os.listdir(path):
+        f = os.path.join(path,file)
         if f.endswith(".png"):
             name = os.path.basename(f)
             data.append(name)
@@ -267,17 +267,18 @@ def detect(dataTest, rf):
         if dict['label_pred'] == 1:
             # TODO To moze nie dzialac prawidlowo, poniewaz rozmiar data bedzie sie zmienial.
             data2.append(dict)
+    data3 = sorted(data2, key=lambda d: d['name'])
     iter = 0
     name = ''
-    for dict in data2:
+    for dict in data3:
         if dict['name'] != name:
             iter = iter + 1
             name = dict['name']
     images = [[] for i in range(iter)]
-    if data2 != []:
+    if data3 != []:
         iter = 0
-        name = data2[0]['name']
-        for dict in data2:
+        name = data3[0]['name']
+        for dict in data3:
             images[iter].append(dict)
             if dict['name'] != name:
                 iter = iter + 1
@@ -300,8 +301,8 @@ def detect(dataTest, rf):
 def main(argv):
     command = input('')
     # TODO Zla sciezka.
-    trainImages = loadImages(os.path.join(os.path.split(os.path.dirname(__file__))[0]), 'train', 'images') #trainImages = lista z nazwami obrazów w pliku train
-    testImages = loadImages(os.path.join(os.path.split(os.path.dirname(__file__))[0]), 'test', 'images') #testImages = lista z nazwami obrazów w pliku test
+    trainImages = loadImages('../train/images') #trainImages = lista z nazwami obrazów w pliku train
+    testImages = loadImages('../test/images') #testImages = lista z nazwami obrazów w pliku test
     dataTrain = loadData(os.path.join(os.path.split(os.path.dirname(__file__))[0], 'train'), trainImages) #dataTrain = lista obiektów typu ImageAnalizer wygenerowana na podstawie nazw obrazów
     dataTest = loadData(os.path.join(os.path.split(os.path.dirname(__file__))[0], 'test'), testImages) #dataTest = lista obiektów typu ImageAnalizer wygenerowana na podstawie nazw obrazów
     dataTrain = dataMerge(dataTrain) #dataTrain = słownik składający się z obrazów oraz ich classID, generowany dla dataTrain z uwagi na pewność wstąienia pliku XML
