@@ -12,11 +12,50 @@ import sys
 import cv2 as cv
 import itertools
 
+# TODO Jakość kodu i raport (4/4)
+
+
+# TODO Skuteczność klasyfikacji 0.0 (0/4)
+# TODO [0.00, 0.50) - 0.0
+# TODO [0.50, 0.55) - 0.5
+# TODO [0.55, 0.60) - 1.0
+# TODO [0.60, 0.65) - 1.5
+# TODO [0.65, 0.70) - 2.0
+# TODO [0.70, 0.75) - 2.5
+# TODO [0.75, 0.80) - 3.0
+# TODO [0.80, 0.85) - 3.5
+# TODO [0.85, 1.00) - 4.0
+
+# stderr:
+# Traceback (most recent call last):
+#   File "main.py", line 280, in <module>
+#     main(sys.argv[1:])
+#   File "main.py", line 263, in main
+#     trainImages = loadImages(os.path.join(os.path.split(os.path.dirname(__file__))[0]), 'train', 'images') #trainImages = lista z nazwami obrazów w pliku train
+#   File "main.py", line 18, in loadImages
+#     for file in os.listdir(os.path.join(os.path.join(path, filename),filename2)):
+# FileNotFoundError: [Errno 2] No such file or directory: 'train/images'
+
+# TODO Skuteczność detekcji 0.0 (0/2)
+
+# stderr:
+# Traceback (most recent call last):
+#   File "main.py", line 280, in <module>
+#     main(sys.argv[1:])
+#   File "main.py", line 263, in main
+#     trainImages = loadImages(os.path.join(os.path.split(os.path.dirname(__file__))[0]), 'train', 'images') #trainImages = lista z nazwami obrazów w pliku train
+#   File "main.py", line 18, in loadImages
+#     for file in os.listdir(os.path.join(os.path.join(path, filename),filename2)):
+# FileNotFoundError: [Errno 2] No such file or directory: 'train/images'
+
+# TODO max(0, 0+0) = 0
+
+
 #funkcja zwraca listę nazw obrazów znajdujących się w podanym pliku
 def loadImages(path,filename, filename2):
     data = []
-    for file in os.listdir(os.path.join(os.path.join(path, filename),filename2)):
-        f = os.path.join(os.path.join(os.path.join(path, filename),filename2),file)
+    for file in os.listdir(os.path.join(path, filename,filename2)):
+        f = os.path.join(path, filename,filename2,file)
         if f.endswith(".png"):
             name = os.path.basename(f)
             data.append(name)
@@ -27,8 +66,8 @@ def loadData(path, imgNames):
     data = []
     for img in imgNames:
         name = os.path.splitext(img)[0]
-        if os.path.isfile(os.path.join(os.path.join(path, 'annotations'), name + '.xml')):
-            f = os.path.join(os.path.join(path, 'annotations'), os.path.splitext(img)[0]+'.xml')
+        if os.path.isfile(os.path.join(path, 'annotations', name + '.xml')):
+            f = os.path.join(path, 'annotations', os.path.splitext(img)[0]+'.xml')
             XMLtree = ET.parse(f)
             XMLroot = XMLtree.getroot()
             data.append(ImageAnalizer(path,f, name))
@@ -49,6 +88,7 @@ class ImageAnalizer:
         if self.XMLf != None:
             self.XMLtree = ET.parse(self.XMLf)
             XMLroot = self.XMLtree.getroot()
+            # TODO Lepiej uzyc funkcji "find" oraz "findall".
             self.name = XMLroot[1].text
             self.width = int(XMLroot[2][0].text)
             self.height = int(XMLroot[2][1].text)
@@ -121,9 +161,8 @@ def dataMerge(dataX):
                     temp = 1
                 else:
                     temp = 0
+                # TODO Przydalyby sie tez przyklady np. tla czy innych obiektow w klasie "other".
                 data.append({'image': image.img[image.ymin[iter]: image.ymax[iter], image.xmin[iter]: image.xmax[iter]],'label': temp})
-        else:
-            data.append({'image': image.img[image.ymin[iter]: image.ymax[iter], image.xmin[iter]: image.xmax[iter]]})
     return data
 
 #funkcja tworząca słownik potrzebny do uczenia maszynowego przy pomocy sift
@@ -223,22 +262,22 @@ def detect(dataTest, rf):
         data.append(imgAn.findCircles())
     data = [j for temp2 in data for j in temp2]
     data = predict(rf, extractFeatures(data))
-    iter = 0
+    data2 = []
     for dict in data:
-        if dict['label_pred'] != 1:
-            del data[iter]
-        iter = iter + 1
+        if dict['label_pred'] == 1:
+            # TODO To moze nie dzialac prawidlowo, poniewaz rozmiar data bedzie sie zmienial.
+            data2.append(dict)
     iter = 0
     name = ''
-    for dict in data:
+    for dict in data2:
         if dict['name'] != name:
             iter = iter + 1
             name = dict['name']
     images = [[] for i in range(iter)]
-    if data != []:
+    if data2 != []:
         iter = 0
-        name = data[0]['name']
-        for dict in data:
+        name = data2[0]['name']
+        for dict in data2:
             images[iter].append(dict)
             if dict['name'] != name:
                 iter = iter + 1
@@ -260,6 +299,7 @@ def detect(dataTest, rf):
 
 def main(argv):
     command = input('')
+    # TODO Zla sciezka.
     trainImages = loadImages(os.path.join(os.path.split(os.path.dirname(__file__))[0]), 'train', 'images') #trainImages = lista z nazwami obrazów w pliku train
     testImages = loadImages(os.path.join(os.path.split(os.path.dirname(__file__))[0]), 'test', 'images') #testImages = lista z nazwami obrazów w pliku test
     dataTrain = loadData(os.path.join(os.path.split(os.path.dirname(__file__))[0], 'train'), trainImages) #dataTrain = lista obiektów typu ImageAnalizer wygenerowana na podstawie nazw obrazów
