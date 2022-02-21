@@ -174,6 +174,7 @@ def learn(data):
     sift = cv2.SIFT_create()
     for sample in data:
         kpts = sift.detect(sample['image'], None)
+        sample['image'] = cv.cvtColor(sample['image'], cv.COLOR_BGR2GRAY)
         kpts, desc = sift.compute(sample['image'], kpts)
         if desc is not None:
             bow.add(desc)
