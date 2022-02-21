@@ -33,3 +33,6 @@ Algorytm zachowuje się inaczej w zależności od przyjętego zakresu koloru odc
 Na pewno istnieją ustawienia dla których algorytm wykrywa znaki z dużą dokładnością, natomiast ciężkie jest ich określenie metodą prób i błędów.
 Program wypisuje również zdecydowanie za dużo znaków w stosunku do prawidłowej wartości. Wynika to z algorytmu MSER, który wykrywa wiele podobnych do siebie miejscem obszarów oraz przesyła je następnie do klasyfikacji.
 Rozwiązaniem tego problemu byłoby przebadanie wszystkich kombinacji otrzymanych obszarów zaklasyfikowanych jako znak ograniczenia prędkości pod kątem wskaźnika IoU oraz usunięcie multiplikatów.
+
+Edit:
+Niestety nie znam bezpośredniej przyczyny błędu który sprawia brak kompilacji u Pana. Na moim komputerze wszystko działa. Poprawiłem jeszcze kilka rzeczy które mogą powodować ten błąd, natomiast nie znam konkretnej przyczyny.
