@@ -28,27 +28,29 @@ import itertools
 
 # stderr:
 # Traceback (most recent call last):
-#   File "main.py", line 280, in <module>
+#   File "main.py", line 321, in <module>
 #     main(sys.argv[1:])
-#   File "main.py", line 263, in main
-#     trainImages = loadImages(os.path.join(os.path.split(os.path.dirname(__file__))[0]), 'train', 'images') #trainImages = lista z nazwami obrazów w pliku train
-#   File "main.py", line 18, in loadImages
-#     for file in os.listdir(os.path.join(os.path.join(path, filename),filename2)):
-# FileNotFoundError: [Errno 2] No such file or directory: 'train/images'
+#   File "main.py", line 310, in main
+#     learn(dataTrain) #generowanie słownika dla uczenia maszynowego
+#   File "main.py", line 178, in learn
+#     vocabulary = bow.cluster()
+# cv2.error: OpenCV(4.5.4) /tmp/pip-req-build-th1mncc2/opencv/modules/features2d/src/bagofwords.cpp:94: error: (-215:Assertion failed) !descriptors.empty() in function 'cluster'
 
 # TODO Skuteczność detekcji 0.0 (0/2)
 
 # stderr:
 # Traceback (most recent call last):
-#   File "main.py", line 280, in <module>
+#   File "main.py", line 321, in <module>
 #     main(sys.argv[1:])
-#   File "main.py", line 263, in main
-#     trainImages = loadImages(os.path.join(os.path.split(os.path.dirname(__file__))[0]), 'train', 'images') #trainImages = lista z nazwami obrazów w pliku train
-#   File "main.py", line 18, in loadImages
-#     for file in os.listdir(os.path.join(os.path.join(path, filename),filename2)):
-# FileNotFoundError: [Errno 2] No such file or directory: 'train/images'
+#   File "main.py", line 310, in main
+#     learn(dataTrain) #generowanie słownika dla uczenia maszynowego
+#   File "main.py", line 178, in learn
+#     vocabulary = bow.cluster()
+# cv2.error: OpenCV(4.5.4) /tmp/pip-req-build-th1mncc2/opencv/modules/features2d/src/bagofwords.cpp:94: error: (-215:Assertion failed) !descriptors.empty() in function 'cluster'
 
 # TODO max(0, 0+0) = 0
+
+# TODO Poprawki po terminie. (-1)
 
 
 #funkcja zwraca listę nazw obrazów znajdujących się w podanym pliku
