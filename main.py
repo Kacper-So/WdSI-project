@@ -306,8 +306,8 @@ def main(argv):
     # TODO Zla sciezka.
     trainImages = loadImages('../train/images') #trainImages = lista z nazwami obrazów w pliku train
     testImages = loadImages('../test/images') #testImages = lista z nazwami obrazów w pliku test
-    dataTrain = loadData(os.path.join(os.path.split(os.path.dirname(__file__))[0], 'train'), trainImages) #dataTrain = lista obiektów typu ImageAnalizer wygenerowana na podstawie nazw obrazów
-    dataTest = loadData(os.path.join(os.path.split(os.path.dirname(__file__))[0], 'test'), testImages) #dataTest = lista obiektów typu ImageAnalizer wygenerowana na podstawie nazw obrazów
+    dataTrain = loadData('../train', trainImages) #dataTrain = lista obiektów typu ImageAnalizer wygenerowana na podstawie nazw obrazów
+    dataTest = loadData('../test', testImages) #dataTest = lista obiektów typu ImageAnalizer wygenerowana na podstawie nazw obrazów
     dataTrain = dataMerge(dataTrain) #dataTrain = słownik składający się z obrazów oraz ich classID, generowany dla dataTrain z uwagi na pewność wstąienia pliku XML
                                      #oraz tego iż taki słownik będzie potrzebny tylko podczas uczenia
     learn(dataTrain) #generowanie słownika dla uczenia maszynowego
