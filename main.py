@@ -15,7 +15,7 @@ import itertools
 # TODO Jakość kodu i raport (4/4)
 
 
-# TODO Skuteczność klasyfikacji 0.0 (0/4)
+# TODO Skuteczność klasyfikacji 0.915 (4/4)
 # TODO [0.00, 0.50) - 0.0
 # TODO [0.50, 0.55) - 0.5
 # TODO [0.55, 0.60) - 1.0
@@ -26,17 +26,7 @@ import itertools
 # TODO [0.80, 0.85) - 3.5
 # TODO [0.85, 1.00) - 4.0
 
-# stderr:
-# Traceback (most recent call last):
-#   File "main.py", line 321, in <module>
-#     main(sys.argv[1:])
-#   File "main.py", line 310, in main
-#     learn(dataTrain) #generowanie słownika dla uczenia maszynowego
-#   File "main.py", line 178, in learn
-#     vocabulary = bow.cluster()
-# cv2.error: OpenCV(4.5.4) /tmp/pip-req-build-th1mncc2/opencv/modules/features2d/src/bagofwords.cpp:94: error: (-215:Assertion failed) !descriptors.empty() in function 'cluster'
-
-# TODO Skuteczność detekcji 0.0 (0/2)
+# TODO Skuteczność detekcji mAP = 0.018 (0.5/2) (1.5/6)
 
 # stderr:
 # Traceback (most recent call last):
@@ -48,9 +38,7 @@ import itertools
 #     vocabulary = bow.cluster()
 # cv2.error: OpenCV(4.5.4) /tmp/pip-req-build-th1mncc2/opencv/modules/features2d/src/bagofwords.cpp:94: error: (-215:Assertion failed) !descriptors.empty() in function 'cluster'
 
-# TODO max(0, 0+0) = 0
-
-# TODO Poprawki po terminie. (-1)
+# TODO max(1.5, 4+0.5) = 4.5
 
 
 #funkcja zwraca listę nazw obrazów znajdujących się w podanym pliku
@@ -195,12 +183,14 @@ def extractFeatures(data):
         if imgDes is not None:
             sample.update({'desc': imgDes})
         else:
+            # TODO Lepiej w ogole pominac takie przypadki.
             sample.update({'desc': np.zeros((1, 128))})
     return data
 
 #funkcja tworząca randomForest
 def train(data):
     clf = RandomForestClassifier(128)
+    # TODO Mozna tez zrobic "np.empty((0, 128))".
     x_matrix = np.empty((1, 128))
     y_vector = []
     for sample in data:
@@ -268,7 +258,6 @@ def detect(dataTest, rf):
     data2 = []
     for dict in data:
         if dict['label_pred'] == 1:
-            # TODO To moze nie dzialac prawidlowo, poniewaz rozmiar data bedzie sie zmienial.
             data2.append(dict)
     data3 = sorted(data2, key=lambda d: d['name'])
     iter = 0
@@ -303,7 +292,6 @@ def detect(dataTest, rf):
 
 def main(argv):
     command = input('')
-    # TODO Zla sciezka.
     trainImages = loadImages('../train/images') #trainImages = lista z nazwami obrazów w pliku train
     testImages = loadImages('../test/images') #testImages = lista z nazwami obrazów w pliku test
     dataTrain = loadData('../train', trainImages) #dataTrain = lista obiektów typu ImageAnalizer wygenerowana na podstawie nazw obrazów
